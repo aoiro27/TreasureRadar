@@ -36,7 +36,7 @@ final class BeaconAdvertiser: NSObject {
             minor = settings.minor ?? 1
             identifier = "treasure.radar.hide"
         case .hunter:
-            uuid = settings.hunterUUID
+            uuid = ScanSettings.hunterUUID
             major = 1
             minor = 1
             identifier = "treasure.radar.seek"

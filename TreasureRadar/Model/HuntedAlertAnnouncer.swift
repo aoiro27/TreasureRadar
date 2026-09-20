@@ -3,7 +3,7 @@ import Foundation
 struct HuntedAlertAnnouncer: Equatable, Sendable {
     var holdDuration: TimeInterval = 0.75
     var cooldown: TimeInterval = 12
-    var triggerAt: TreasureProximity = .near
+    let triggerAt: TreasureProximity = .near
 
     private var candidate: TreasureProximity?
     private var candidateSince: Date?

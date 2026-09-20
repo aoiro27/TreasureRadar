@@ -37,34 +37,34 @@ final class BeaconRangingService: NSObject, TreasureScanning {
         stop()
         self.role = role
 
-        let uuid: UUID?
-        let nextConstraint: CLBeaconIdentityConstraint
+        let resolved: (uuid: UUID, constraint: CLBeaconIdentityConstraint)?
         switch role {
         case .treasure:
-            uuid = settings.beaconUUID
-            guard let uuid else {
-                delegate?.scannerDidChangeStatus("UUIDがちがいます。せっていを見てね")
-                return
-            }
-            if let major = settings.major, let minor = settings.minor {
-                nextConstraint = CLBeaconIdentityConstraint(uuid: uuid, major: major, minor: minor)
-            } else if let major = settings.major {
-                nextConstraint = CLBeaconIdentityConstraint(uuid: uuid, major: major)
+            if let uuid = settings.beaconUUID {
+                let constraint: CLBeaconIdentityConstraint
+                if let major = settings.major, let minor = settings.minor {
+                    constraint = CLBeaconIdentityConstraint(uuid: uuid, major: major, minor: minor)
+                } else if let major = settings.major {
+                    constraint = CLBeaconIdentityConstraint(uuid: uuid, major: major)
+                } else {
+                    constraint = CLBeaconIdentityConstraint(uuid: uuid)
+                }
+                resolved = (uuid, constraint)
             } else {
-                nextConstraint = CLBeaconIdentityConstraint(uuid: uuid)
+                resolved = nil
             }
         case .hunter:
-            uuid = settings.hunterUUID
-            guard let uuid else {
-                delegate?.scannerDidChangeStatus("UUIDがちがいます。せっていを見てね")
-                return
-            }
-            nextConstraint = CLBeaconIdentityConstraint(uuid: uuid, major: 1, minor: 1)
+            let uuid = ScanSettings.hunterUUID
+            resolved = (uuid, CLBeaconIdentityConstraint(uuid: uuid, major: 1, minor: 1))
         }
 
-        guard let uuid else { return }
-        constraint = nextConstraint
-        region = CLBeaconRegion(beaconIdentityConstraint: nextConstraint, identifier: uuid.uuidString)
+        guard let resolved else {
+            delegate?.scannerDidChangeStatus("UUIDがちがいます。せっていを見てね")
+            return
+        }
+
+        constraint = resolved.constraint
+        region = CLBeaconRegion(beaconIdentityConstraint: resolved.constraint, identifier: resolved.uuid.uuidString)
 
         switch locationManager.authorizationStatus {
         case .notDetermined:
@@ -115,10 +115,11 @@ extension BeaconRangingService: @preconcurrency CLLocationManagerDelegate {
         satisfying beaconConstraint: CLBeaconIdentityConstraint
     ) {
         let now = Date()
+        let label = role == .hunter ? "探す人" : "宝"
         let treasures = beacons.map { beacon in
             DetectedTreasure.make(
                 id: "\(beacon.uuid.uuidString)-\(beacon.major)-\(beacon.minor)",
-                title: "宝 \(beacon.major)-\(beacon.minor)",
+                title: "\(label) \(beacon.major)-\(beacon.minor)",
                 rssi: beacon.rssi,
                 accuracyMeters: beacon.accuracy >= 0 ? beacon.accuracy : nil,
                 now: now

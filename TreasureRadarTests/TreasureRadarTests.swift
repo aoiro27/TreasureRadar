@@ -115,7 +115,7 @@ struct ScanSettingsTests {
 
     @Test func defaultUUIDIsValid() {
         #expect(ScanSettings.default.isUUIDValid)
-        #expect(ScanSettings.default.hunterUUID?.uuidString == ScanSettings.hunterUUIDString)
+        #expect(ScanSettings.hunterUUID.uuidString == ScanSettings.hunterUUIDString)
         #expect(ScanSettings.hunterUUIDString != ScanSettings.defaultUUIDString)
     }
 

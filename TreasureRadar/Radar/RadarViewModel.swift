@@ -208,7 +208,7 @@ final class RadarViewModel: TreasureScanDelegate {
         if session == .seeking {
             let proximity = closest?.proximity ?? .unknown
             statusMessage = proximity.kidLabel
-            if let clip = statusAnnouncer.clip(for: proximity, now: now) {
+            if settings.voiceEnabled, let clip = statusAnnouncer.clip(for: proximity, now: now) {
                 speak(clip)
             }
         }
@@ -253,7 +253,7 @@ final class RadarViewModel: TreasureScanDelegate {
         } else {
             statusMessage = "だれかが近くにいるかも"
         }
-        if let clip = huntedAlert.clip(for: hunterProximity, now: now) {
+        if settings.voiceEnabled, let clip = huntedAlert.clip(for: hunterProximity, now: now) {
             speak(clip)
         }
     }
