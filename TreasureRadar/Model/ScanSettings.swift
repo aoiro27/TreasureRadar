@@ -38,6 +38,7 @@ struct ScanSettings: Equatable, Codable, Sendable {
     var bleName: String
     var soundEnabled: Bool
     var voiceEnabled: Bool
+    var huntedVoiceEnabled: Bool
 
     static let `default` = ScanSettings(
         mode: .iBeacon,
@@ -46,7 +47,8 @@ struct ScanSettings: Equatable, Codable, Sendable {
         minorText: "1",
         bleName: "Treasure",
         soundEnabled: true,
-        voiceEnabled: true
+        voiceEnabled: true,
+        huntedVoiceEnabled: true
     )
 
     var beaconUUID: UUID? {
@@ -66,7 +68,7 @@ struct ScanSettings: Equatable, Codable, Sendable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case mode, uuidString, majorText, minorText, bleName, soundEnabled, voiceEnabled
+        case mode, uuidString, majorText, minorText, bleName, soundEnabled, voiceEnabled, huntedVoiceEnabled
     }
 
     init(
@@ -76,7 +78,8 @@ struct ScanSettings: Equatable, Codable, Sendable {
         minorText: String,
         bleName: String,
         soundEnabled: Bool,
-        voiceEnabled: Bool
+        voiceEnabled: Bool,
+        huntedVoiceEnabled: Bool
     ) {
         self.mode = mode
         self.uuidString = uuidString
@@ -85,6 +88,7 @@ struct ScanSettings: Equatable, Codable, Sendable {
         self.bleName = bleName
         self.soundEnabled = soundEnabled
         self.voiceEnabled = voiceEnabled
+        self.huntedVoiceEnabled = huntedVoiceEnabled
     }
 
     init(from decoder: Decoder) throws {
@@ -96,6 +100,7 @@ struct ScanSettings: Equatable, Codable, Sendable {
         bleName = try container.decode(String.self, forKey: .bleName)
         soundEnabled = try container.decodeIfPresent(Bool.self, forKey: .soundEnabled) ?? true
         voiceEnabled = try container.decodeIfPresent(Bool.self, forKey: .voiceEnabled) ?? true
+        huntedVoiceEnabled = try container.decodeIfPresent(Bool.self, forKey: .huntedVoiceEnabled) ?? true
     }
 
     func encode(to encoder: Encoder) throws {
@@ -107,6 +112,7 @@ struct ScanSettings: Equatable, Codable, Sendable {
         try container.encode(bleName, forKey: .bleName)
         try container.encode(soundEnabled, forKey: .soundEnabled)
         try container.encode(voiceEnabled, forKey: .voiceEnabled)
+        try container.encode(huntedVoiceEnabled, forKey: .huntedVoiceEnabled)
     }
 
     static func parseIdentity(_ raw: String) -> UInt16? {

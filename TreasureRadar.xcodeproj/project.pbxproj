@@ -24,6 +24,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		8A11A0000000000000000020 /* TreasureRadar */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				8A11A0000000000000000022 /* Exceptions for "TreasureRadar" folder in "TreasureRadar" target */,
+			);
 			path = TreasureRadar;
 			sourceTree = "<group>";
 		};
@@ -33,6 +36,16 @@
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		8A11A0000000000000000022 /* Exceptions for "TreasureRadar" folder in "TreasureRadar" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 8A11A0000000000000000002 /* TreasureRadar */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		8A11A0000000000000000061 /* Frameworks */ = {
@@ -246,11 +259,15 @@
 				DEVELOPMENT_TEAM = UMS95NYGUN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TreasureRadar/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "トレジャーレーダー";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "隠したスマホのBluetooth電波を探すために使います。";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "宝の電波を発信するためにBluetoothを使います。";
+				INFOPLIST_KEY_NSCameraUsageDescription = "UWBで宝の方角を出すためにカメラを使います。写真は撮りません。";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "近くのiPhoneとUWBで方位を測るために使います。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "宝の電波を探す、かくしたスマホが近づきを知るために使います。";
+				INFOPLIST_KEY_NSNearbyInteractionUsageDescription = "近くまで来たら正確な距離と方角を出すために超広帯域無線（UWB）を使います。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -282,11 +299,15 @@
 				DEVELOPMENT_TEAM = UMS95NYGUN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = TreasureRadar/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "トレジャーレーダー";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "隠したスマホのBluetooth電波を探すために使います。";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "宝の電波を発信するためにBluetoothを使います。";
+				INFOPLIST_KEY_NSCameraUsageDescription = "UWBで宝の方角を出すためにカメラを使います。写真は撮りません。";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "近くのiPhoneとUWBで方位を測るために使います。";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "宝の電波を探す、かくしたスマホが近づきを知るために使います。";
+				INFOPLIST_KEY_NSNearbyInteractionUsageDescription = "近くまで来たら正確な距離と方角を出すために超広帯域無線（UWB）を使います。";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

@@ -25,10 +25,6 @@ struct RadarScreen: View {
             }
             .padding(.top, 12)
             .padding(.bottom, 20)
-
-            if viewModel.isFound {
-                foundOverlay
-            }
         }
         .sheet(isPresented: $viewModel.showSettings) {
             SettingsView(viewModel: viewModel)
@@ -68,10 +64,29 @@ struct RadarScreen: View {
                 .font(.system(size: 28, weight: .black, design: .rounded))
                 .foregroundStyle(Color(red: 1, green: 0.86, blue: 0.32))
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
-            Text(modeCaption)
-                .font(.system(size: 13, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white.opacity(0.7))
+            HStack(spacing: 8) {
+                if let link = viewModel.rangingLink {
+                    rangingBadge(link)
+                }
+                Text(modeCaption)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.7))
+            }
         }
+    }
+
+    private func rangingBadge(_ link: RangingLink) -> some View {
+        let tint = link == .uwb
+            ? Color(red: 0.45, green: 0.85, blue: 1.0)
+            : Color(red: 0.55, green: 1.0, blue: 0.48)
+        return Text(link.rawValue)
+            .font(.system(size: 12, weight: .black, design: .rounded))
+            .foregroundStyle(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(tint.opacity(0.18), in: Capsule())
+            .overlay(Capsule().stroke(tint.opacity(0.55), lineWidth: 1))
+            .accessibilityLabel(link == .uwb ? "UWBで探しています" : "BLEで探しています")
     }
 
     private var modeCaption: String {
@@ -154,29 +169,6 @@ struct RadarScreen: View {
         .font(.system(size: 13, weight: .bold, design: .rounded))
         .foregroundStyle(.white.opacity(0.82))
         .labelStyle(.titleAndIcon)
-    }
-
-    private var foundOverlay: some View {
-        VStack(spacing: 16) {
-            Text("宝をみつけた！")
-                .font(.system(size: 34, weight: .black, design: .rounded))
-                .foregroundStyle(Color(red: 1, green: 0.9, blue: 0.35))
-            Text("すぐそばに電波があるよ")
-                .font(.system(size: 16, weight: .semibold, design: .rounded))
-                .foregroundStyle(.white)
-            Button("つづける") {
-                viewModel.continueHunting()
-            }
-            .font(.system(size: 18, weight: .black, design: .rounded))
-            .padding(.horizontal, 28)
-            .padding(.vertical, 12)
-            .background(Color(red: 0.25, green: 0.72, blue: 0.28), in: Capsule())
-            .foregroundStyle(.white)
-        }
-        .padding(28)
-        .background(.black.opacity(0.72), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .padding(24)
-        .transition(.scale.combined(with: .opacity))
     }
 }
 

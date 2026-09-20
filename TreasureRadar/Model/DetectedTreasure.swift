@@ -9,6 +9,9 @@ struct DetectedTreasure: Identifiable, Equatable, Sendable {
     let radarRadius: Double
     let radarAngle: Double
     let lastSeen: Date
+    let usesUWBDirection: Bool
+    let usesUWBDistance: Bool
+    let uwbHorizontalAngle: Double?
 
     func smoothed(toward incoming: DetectedTreasure, now: Date) -> DetectedTreasure {
         DetectedTreasure(
@@ -26,7 +29,10 @@ struct DetectedTreasure: Identifiable, Equatable, Sendable {
                 max: 1
             ),
             radarAngle: incoming.radarAngle,
-            lastSeen: now
+            lastSeen: now,
+            usesUWBDirection: incoming.usesUWBDirection,
+            usesUWBDistance: incoming.usesUWBDistance,
+            uwbHorizontalAngle: incoming.uwbHorizontalAngle
         )
     }
 
@@ -35,7 +41,11 @@ struct DetectedTreasure: Identifiable, Equatable, Sendable {
         title: String,
         rssi: Int,
         accuracyMeters: Double?,
-        now: Date = Date()
+        now: Date = Date(),
+        radarAngle: Double? = nil,
+        usesUWBDirection: Bool = false,
+        usesUWBDistance: Bool = false,
+        uwbHorizontalAngle: Double? = nil
     ) -> DetectedTreasure {
         DetectedTreasure(
             id: id,
@@ -44,8 +54,11 @@ struct DetectedTreasure: Identifiable, Equatable, Sendable {
             accuracyMeters: accuracyMeters,
             proximity: ProximityMapper.proximity(accuracyMeters: accuracyMeters, rssi: rssi),
             radarRadius: ProximityMapper.radarRadius(accuracyMeters: accuracyMeters, rssi: rssi),
-            radarAngle: ProximityMapper.stableAngle(for: id),
-            lastSeen: now
+            radarAngle: radarAngle ?? ProximityMapper.stableAngle(for: id),
+            lastSeen: now,
+            usesUWBDirection: usesUWBDirection,
+            usesUWBDistance: usesUWBDistance,
+            uwbHorizontalAngle: uwbHorizontalAngle
         )
     }
 }

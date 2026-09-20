@@ -9,7 +9,7 @@ enum RadarSession: Equatable {
 
 @Observable
 @MainActor
-final class RadarViewModel: TreasureScanDelegate {
+final class RadarViewModel: TreasureScanDelegate, UWBPeerDelegate {
     private(set) var treasures: [DetectedTreasure] = []
     private(set) var session: RadarSession = .idle
     private(set) var statusMessage = "『さがす』をおしてね"
@@ -24,6 +24,11 @@ final class RadarViewModel: TreasureScanDelegate {
     private var advertiser: BeaconAdvertiser?
     private var hunterAdvertiser: BeaconAdvertiser?
     private var hunterRanger: BeaconRangingService?
+    private var uwbCoordinator: UWBPeerCoordinator?
+    private var bleTreasures: [DetectedTreasure] = []
+    private var hunterHits: [DetectedTreasure] = []
+    private var uwbFix: UWBFix?
+    private var uwbFusionState = UWBFusionState()
     private let tonePlayer = RadarTonePlayer()
     private let voicePlayer = StatusVoicePlayer()
     private var lastPingAt = Date.distantPast
@@ -41,6 +46,10 @@ final class RadarViewModel: TreasureScanDelegate {
 
     var closest: DetectedTreasure? {
         treasures.min(by: { $0.radarRadius < $1.radarRadius })
+    }
+
+    var rangingLink: RangingLink? {
+        RangingLink.current(isActive: session != .idle, usingUWB: uwbFusionState.usingUWB)
     }
 
     var liveSignal: LiveSignal? {
@@ -97,6 +106,7 @@ final class RadarViewModel: TreasureScanDelegate {
         }
         speak(statusAnnouncer.speakNow(.unknown))
         startHunterBroadcastIfNeeded()
+        startUWBIfNeeded(role: .hunter)
     }
 
     func startHiding() {
@@ -129,6 +139,7 @@ final class RadarViewModel: TreasureScanDelegate {
         let ranger = BeaconRangingService(delegate: self)
         hunterRanger = ranger
         ranger.start(settings: settings, role: .hunter)
+        startUWBIfNeeded(role: .treasure)
     }
 
     func stopAll() {
@@ -138,12 +149,18 @@ final class RadarViewModel: TreasureScanDelegate {
         advertiser?.stop()
         hunterAdvertiser?.stop()
         hunterRanger?.stop()
+        uwbCoordinator?.stop()
         rangingService = nil
         bleScanner = nil
         demoScanner = nil
         advertiser = nil
         hunterAdvertiser = nil
         hunterRanger = nil
+        uwbCoordinator = nil
+        bleTreasures = []
+        hunterHits = []
+        uwbFix = nil
+        uwbFusionState = UWBFusionState()
         tonePlayer.stop()
         voicePlayer.stop()
         session = .idle
@@ -185,33 +202,27 @@ final class RadarViewModel: TreasureScanDelegate {
         }
     }
 
-    func continueHunting() {
-        isFound = false
-        foundTracker.reset()
-        statusAnnouncer.reset()
-    }
-
     func previewVoice() {
         guard settings.voiceEnabled else { return }
         voicePlayer.speak(.mid)
     }
 
+    func previewHuntedVoice() {
+        guard settings.huntedVoiceEnabled else { return }
+        voicePlayer.speak(.hunted)
+    }
+
     func scannerDidUpdate(_ incoming: [DetectedTreasure]) {
         let now = Date()
         if session == .hiding {
+            hunterHits = incoming
             handleHunterUpdate(incoming, now: now)
             return
         }
+        guard session == .seeking else { return }
 
-        treasures = TreasureMerge.merge(existing: treasures, incoming: incoming, now: now)
-        updateFoundState(now: now)
-        if session == .seeking {
-            let proximity = closest?.proximity ?? .unknown
-            statusMessage = proximity.kidLabel
-            if settings.voiceEnabled, let clip = statusAnnouncer.clip(for: proximity, now: now) {
-                speak(clip)
-            }
-        }
+        bleTreasures = TreasureMerge.merge(existing: bleTreasures, incoming: incoming, now: now)
+        publishFused(now: now)
     }
 
     func scannerDidChangeStatus(_ message: String) {
@@ -233,8 +244,64 @@ final class RadarViewModel: TreasureScanDelegate {
     }
 
     private func speak(_ clip: VoiceClip) {
-        guard settings.voiceEnabled else { return }
+        switch clip {
+        case .hunted:
+            guard settings.huntedVoiceEnabled else { return }
+        default:
+            guard settings.voiceEnabled else { return }
+        }
         voicePlayer.speak(clip)
+    }
+
+    func uwbDidUpdate(_ fix: UWBFix?) {
+        uwbFix = fix
+        let now = Date()
+        if session == .hiding {
+            handleHunterUpdate(hunterHits, now: now)
+        } else if session == .seeking {
+            publishFused(now: now)
+        }
+    }
+
+    func uwbDidChangeStatus(_ message: String) {
+        scannerDidChangeStatus(message)
+    }
+
+    private func publishFused(now: Date) {
+        let fused = UWBRadarFusion.apply(
+            treasures: bleTreasures,
+            fix: uwbFix,
+            state: uwbFusionState,
+            now: now
+        )
+        uwbFusionState = fused.state
+        treasures = fused.treasures
+        updateFoundState(now: now)
+        if session == .seeking {
+            let proximity = closest?.proximity ?? .unknown
+            if fused.state.usingUWB, let meters = closest?.accuracyMeters {
+                statusMessage = UWBRadarFusion.seekingHint(
+                    meters: meters,
+                    horizontalAngle: closest?.uwbHorizontalAngle
+                )
+            } else {
+                statusMessage = proximity.kidLabel
+            }
+            if settings.voiceEnabled, let clip = statusAnnouncer.clip(for: proximity, now: now) {
+                speak(clip)
+            }
+        }
+    }
+
+    private func startUWBIfNeeded(role: BeaconRole) {
+        guard settings.mode != .demo else { return }
+        #if targetEnvironment(simulator)
+        return
+        #else
+        let coordinator = UWBPeerCoordinator(delegate: self)
+        uwbCoordinator = coordinator
+        coordinator.start(role: role)
+        #endif
     }
 
     private func startHunterBroadcastIfNeeded() {
@@ -245,7 +312,16 @@ final class RadarViewModel: TreasureScanDelegate {
     }
 
     private func handleHunterUpdate(_ incoming: [DetectedTreasure], now: Date) {
-        hunterProximity = incoming.map(\.proximity).max() ?? .unknown
+        let fused = UWBRadarFusion.apply(
+            treasures: incoming,
+            fix: uwbFix,
+            state: uwbFusionState,
+            now: now
+        )
+        uwbFusionState = fused.state
+        hunterProximity = fused.treasures.map(\.proximity).max()
+            ?? incoming.map(\.proximity).max()
+            ?? .unknown
         if hunterProximity >= .near {
             statusMessage = VoiceClip.hunted.spokenText
         } else if hunterProximity == .unknown {
@@ -253,7 +329,7 @@ final class RadarViewModel: TreasureScanDelegate {
         } else {
             statusMessage = "だれかが近くにいるかも"
         }
-        if settings.voiceEnabled, let clip = huntedAlert.clip(for: hunterProximity, now: now) {
+        if settings.huntedVoiceEnabled, let clip = huntedAlert.clip(for: hunterProximity, now: now) {
             speak(clip)
         }
     }

@@ -136,6 +136,18 @@ struct ScanSettingsTests {
         """.data(using: .utf8)!
         let settings = try JSONDecoder().decode(ScanSettings.self, from: json)
         #expect(settings.voiceEnabled)
+        #expect(settings.huntedVoiceEnabled)
+    }
+
+    @Test func huntedVoiceCanBeTurnedOffAndSaved() {
+        let defaults = UserDefaults(suiteName: "treasure.radar.hunted-voice")!
+        defaults.removePersistentDomain(forName: "treasure.radar.hunted-voice")
+        var settings = ScanSettings.default
+        settings.huntedVoiceEnabled = false
+        settings.save(defaults: defaults)
+        let loaded = ScanSettings.load(defaults: defaults)
+        #expect(loaded.huntedVoiceEnabled == false)
+        #expect(loaded.voiceEnabled)
     }
 }
 
@@ -236,5 +248,210 @@ struct FoundTrackerTests {
         #expect(tracker.isFound)
         _ = tracker.update(proximity: .near, now: start.addingTimeInterval(3.0))
         #expect(tracker.isFound == false)
+    }
+}
+
+struct UWBRadarFusionTests {
+    @Test func farUWBStaysOnBLEHashAngle() {
+        let now = Date()
+        let ble = DetectedTreasure.make(
+            id: "a",
+            title: "宝",
+            rssi: -80,
+            accuracyMeters: 14,
+            now: now
+        )
+        let fix = UWBFix(
+            distanceMeters: 12,
+            horizontalAngle: 0.4,
+            timestamp: now
+        )
+        let result = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: fix,
+            state: UWBFusionState(),
+            now: now
+        )
+        #expect(result.state.usingUWB == false)
+        #expect(result.treasures[0].radarAngle == ble.radarAngle)
+        #expect(result.treasures[0].accuracyMeters == 14)
+        #expect(result.treasures[0].usesUWBDirection == false)
+    }
+
+    @Test func closeUWBSwitchesToDistanceAndHeading() {
+        let now = Date()
+        let ble = DetectedTreasure.make(
+            id: "a",
+            title: "宝",
+            rssi: -70,
+            accuracyMeters: 6,
+            now: now
+        )
+        let fix = UWBFix(
+            distanceMeters: 2.0,
+            horizontalAngle: 0,
+            timestamp: now
+        )
+        let result = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: fix,
+            state: UWBFusionState(),
+            now: now
+        )
+        #expect(result.state.usingUWB)
+        #expect(result.treasures[0].accuracyMeters == 2.0)
+        #expect(result.treasures[0].usesUWBDirection)
+        #expect(abs(result.treasures[0].radarAngle - UWBRadarFusion.radarAngle(fromHorizontalAngle: 0)) < 0.0001)
+        #expect(result.treasures[0].radarRadius < ble.radarRadius)
+        #expect(result.treasures[0].proximity == .near)
+    }
+
+    @Test func hysteresisKeepsUWBUntilExitDistance() {
+        let now = Date()
+        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -70, accuracyMeters: 9)
+        let stay = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: UWBFix(distanceMeters: 9, horizontalAngle: 0.2, timestamp: now),
+            state: UWBFusionState(usingUWB: true),
+            now: now
+        )
+        #expect(stay.state.usingUWB)
+        #expect(stay.treasures[0].accuracyMeters == 9)
+
+        let drop = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: UWBFix(distanceMeters: 11, horizontalAngle: 0.2, timestamp: now),
+            state: stay.state,
+            now: now
+        )
+        #expect(drop.state.usingUWB == false)
+        #expect(drop.treasures[0].accuracyMeters == 9)
+        #expect(drop.treasures[0].usesUWBDirection == false)
+    }
+
+    @Test func staleFixFallsBackToBLE() {
+        let now = Date()
+        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -50, accuracyMeters: 3)
+        let result = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: UWBFix(
+                distanceMeters: 1.2,
+                horizontalAngle: 1,
+                timestamp: now.addingTimeInterval(-3)
+            ),
+            state: UWBFusionState(usingUWB: true),
+            now: now
+        )
+        #expect(result.state.usingUWB == false)
+        #expect(result.treasures[0].accuracyMeters == 3)
+        #expect(result.treasures[0].radarAngle == ble.radarAngle)
+    }
+
+    @Test func uwbDistanceWithoutHeadingKeepsFallbackAngle() {
+        let now = Date()
+        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -55, accuracyMeters: 4)
+        let result = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: UWBFix(distanceMeters: 1.5, horizontalAngle: nil, timestamp: now),
+            state: UWBFusionState(),
+            now: now
+        )
+        #expect(result.state.usingUWB)
+        #expect(result.treasures[0].accuracyMeters == 1.5)
+        #expect(result.treasures[0].usesUWBDirection == false)
+        #expect(result.treasures[0].usesUWBDistance)
+        #expect(result.treasures[0].uwbHorizontalAngle == nil)
+    }
+
+    @Test func emptyBLEStillShowsCloseUWBBlip() {
+        let now = Date()
+        let result = UWBRadarFusion.apply(
+            treasures: [],
+            fix: UWBFix(distanceMeters: 1.1, horizontalAngle: .pi / 2, timestamp: now),
+            state: UWBFusionState(),
+            now: now
+        )
+        #expect(result.treasures.count == 1)
+        #expect(result.state.usingUWB)
+        #expect(result.treasures[0].id == UWBRadarFusion.syntheticTreasureID)
+        #expect(result.treasures[0].usesUWBDirection)
+        #expect(result.treasures[0].usesUWBDistance)
+        #expect(abs(result.treasures[0].radarAngle - UWBRadarFusion.radarAngle(fromHorizontalAngle: .pi / 2)) < 0.0001)
+    }
+
+    @Test func overlaysClosestTreasureOnly() {
+        let now = Date()
+        let close = DetectedTreasure.make(id: "near", title: "近い", rssi: -50, accuracyMeters: 3, now: now)
+        let far = DetectedTreasure.make(id: "far", title: "遠い", rssi: -90, accuracyMeters: 16, now: now)
+        let result = UWBRadarFusion.apply(
+            treasures: [far, close],
+            fix: UWBFix(distanceMeters: 0.7, horizontalAngle: 0.5, timestamp: now),
+            state: UWBFusionState(),
+            now: now
+        )
+        let updatedClose = result.treasures.first { $0.id == "near" }!
+        let updatedFar = result.treasures.first { $0.id == "far" }!
+        #expect(updatedClose.accuracyMeters == 0.7)
+        #expect(updatedClose.usesUWBDirection)
+        #expect(updatedClose.usesUWBDistance)
+        #expect(updatedFar.accuracyMeters == 16)
+        #expect(updatedFar.usesUWBDirection == false)
+        #expect(updatedFar.usesUWBDistance == false)
+    }
+
+    @Test func forwardHeadingMapsToTopOfRadar() {
+        let angle = UWBRadarFusion.radarAngle(fromHorizontalAngle: 0)
+        #expect(abs(angle - (-.pi / 2)) < 0.0001)
+        let right = UWBRadarFusion.radarAngle(fromHorizontalAngle: .pi / 2)
+        #expect(abs(right) < 0.0001)
+    }
+
+    @Test func phoneBackIsForwardOnTheRadar() {
+        let front = UWBRadarFusion.horizontalAngle(fromDirection: SIMD3<Float>(0, 0, -1))
+        let right = UWBRadarFusion.horizontalAngle(fromDirection: SIMD3<Float>(1, 0, 0))
+        #expect(front != nil)
+        #expect(right != nil)
+        #expect(abs(front!) < 0.0001)
+        #expect(abs(right! - .pi / 2) < 0.0001)
+        #expect(UWBRadarFusion.relativeDirectionLabel(fromHorizontalAngle: 0) == "まえ")
+        #expect(UWBRadarFusion.relativeDirectionLabel(fromHorizontalAngle: .pi / 2) == "みぎ")
+        #expect(UWBRadarFusion.relativeDirectionLabel(fromHorizontalAngle: -.pi / 2) == "ひだり")
+        #expect(UWBRadarFusion.relativeDirectionLabel(fromHorizontalAngle: .pi) == "うしろ")
+        #expect(UWBRadarFusion.seekingHint(meters: 2.4, horizontalAngle: 0).contains("まえ"))
+        #expect(UWBRadarFusion.seekingHint(meters: 2.4, horizontalAngle: 0).contains("2.4m"))
+        #expect(UWBRadarFusion.seekingHint(meters: 2.4, horizontalAngle: nil).contains("方角はまだ"))
+    }
+
+    @Test func uwbHeadingIsSmoothedAfterFirstLock() {
+        let now = Date()
+        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -50, accuracyMeters: 3)
+        let first = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: UWBFix(distanceMeters: 1.2, horizontalAngle: 0, timestamp: now),
+            state: UWBFusionState(),
+            now: now
+        )
+        let second = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: UWBFix(distanceMeters: 1.2, horizontalAngle: .pi / 2, timestamp: now),
+            state: first.state,
+            now: now
+        )
+        let jumped = UWBRadarFusion.radarAngle(fromHorizontalAngle: .pi / 2)
+        #expect(second.treasures[0].usesUWBDirection)
+        #expect(abs(second.treasures[0].radarAngle - jumped) > 0.1)
+        #expect(abs(second.treasures[0].radarAngle - first.treasures[0].radarAngle) > 0.1)
+    }
+
+    @Test func rangingLinkIsNilWhenIdle() {
+        #expect(RangingLink.current(isActive: false, usingUWB: false) == nil)
+        #expect(RangingLink.current(isActive: false, usingUWB: true) == nil)
+    }
+
+    @Test func rangingLinkShowsUWBOnlyWhenUsingIt() {
+        #expect(RangingLink.current(isActive: true, usingUWB: false) == .ble)
+        #expect(RangingLink.current(isActive: true, usingUWB: true) == .uwb)
+        #expect(RangingLink.ble.rawValue == "BLE")
+        #expect(RangingLink.uwb.rawValue == "UWB")
     }
 }

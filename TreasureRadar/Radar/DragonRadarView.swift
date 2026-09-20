@@ -17,7 +17,7 @@ enum RadarRenderer {
         let center = CGPoint(x: size.width / 2, y: size.height / 2)
         let radius = min(size.width, size.height) / 2 - 4
 
-        var screenPath = Path(ellipseIn: CGRect(
+        let screenPath = Path(ellipseIn: CGRect(
             x: center.x - radius,
             y: center.y - radius,
             width: radius * 2,
@@ -28,6 +28,9 @@ enum RadarRenderer {
         context.drawLayer { ctx in
             ctx.clip(to: screenPath)
             drawGrid(ctx, center: center, radius: radius)
+            if treasures.contains(where: { $0.usesUWBDistance }) {
+                drawPhoneHeading(ctx, center: center, radius: radius)
+            }
             if isScanning {
                 drawSweep(ctx, center: center, radius: radius, date: date)
             }
@@ -82,6 +85,35 @@ enum RadarRenderer {
         context.fill(Path(ellipseIn: you), with: .color(phosphor))
     }
 
+    private static func drawPhoneHeading(
+        _ context: GraphicsContext,
+        center: CGPoint,
+        radius: CGFloat
+    ) {
+        let tip = CGPoint(x: center.x, y: center.y - radius * 0.92)
+        var arrow = Path()
+        arrow.move(to: tip)
+        arrow.addLine(to: CGPoint(x: center.x - 8, y: center.y - radius * 0.78))
+        arrow.addLine(to: CGPoint(x: center.x + 8, y: center.y - radius * 0.78))
+        arrow.closeSubpath()
+        context.fill(arrow, with: .color(Color(red: 0.45, green: 0.85, blue: 1.0)))
+
+        let labels: [(String, CGPoint)] = [
+            ("前", CGPoint(x: center.x, y: center.y - radius * 0.62)),
+            ("みぎ", CGPoint(x: center.x + radius * 0.62, y: center.y)),
+            ("ひだり", CGPoint(x: center.x - radius * 0.62, y: center.y)),
+            ("うしろ", CGPoint(x: center.x, y: center.y + radius * 0.62))
+        ]
+        for (text, point) in labels {
+            context.draw(
+                Text(text)
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .foregroundColor(Color(red: 0.45, green: 0.85, blue: 1.0).opacity(0.9)),
+                at: point
+            )
+        }
+    }
+
     private static func drawSweep(
         _ context: GraphicsContext,
         center: CGPoint,
@@ -129,10 +161,56 @@ enum RadarRenderer {
     ) {
         for treasure in treasures {
             let usableRadius = radius * 0.86
+            let distanceRadius = usableRadius * treasure.radarRadius
+            if treasure.usesUWBDistance, !treasure.usesUWBDirection {
+                let rect = CGRect(
+                    x: center.x - distanceRadius,
+                    y: center.y - distanceRadius,
+                    width: distanceRadius * 2,
+                    height: distanceRadius * 2
+                )
+                context.stroke(
+                    Path(ellipseIn: rect),
+                    with: .color(blip.opacity(0.7)),
+                    style: StrokeStyle(lineWidth: 3, dash: [7, 5])
+                )
+                if let meters = treasure.accuracyMeters {
+                    context.draw(
+                        Text(UWBRadarFusion.formattedMeters(meters))
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                            .foregroundColor(blip),
+                        at: CGPoint(x: center.x, y: center.y - distanceRadius - 10)
+                    )
+                }
+                continue
+            }
+
             let point = CGPoint(
-                x: center.x + CGFloat(cos(treasure.radarAngle)) * usableRadius * treasure.radarRadius,
-                y: center.y + CGFloat(sin(treasure.radarAngle)) * usableRadius * treasure.radarRadius
+                x: center.x + CGFloat(cos(treasure.radarAngle)) * distanceRadius,
+                y: center.y + CGFloat(sin(treasure.radarAngle)) * distanceRadius
             )
+            if treasure.usesUWBDirection {
+                var bearing = Path()
+                bearing.move(to: center)
+                bearing.addLine(to: point)
+                context.stroke(bearing, with: .color(blip.opacity(0.7)), lineWidth: 3)
+
+                var head = Path()
+                let tipAngle = treasure.radarAngle
+                let left = tipAngle + 2.7
+                let right = tipAngle - 2.7
+                head.move(to: point)
+                head.addLine(to: CGPoint(
+                    x: point.x + CGFloat(cos(left)) * 14,
+                    y: point.y + CGFloat(sin(left)) * 14
+                ))
+                head.addLine(to: CGPoint(
+                    x: point.x + CGFloat(cos(right)) * 14,
+                    y: point.y + CGFloat(sin(right)) * 14
+                ))
+                head.closeSubpath()
+                context.fill(head, with: .color(blip))
+            }
             let pulse = 0.75 + 0.25 * sin(date.timeIntervalSinceReferenceDate * 6 + treasure.radarAngle)
             let size: CGFloat = treasure.proximity == .immediate ? 11 : 8
 
@@ -141,6 +219,18 @@ enum RadarRenderer {
 
             let core = CGRect(x: point.x - size / 2, y: point.y - size / 2, width: size, height: size)
             context.fill(Path(ellipseIn: core), with: .color(blip.opacity(0.55 + 0.45 * pulse)))
+
+            if treasure.usesUWBDirection, let meters = treasure.accuracyMeters {
+                let label = UWBRadarFusion.relativeDirectionLabel(
+                    fromHorizontalAngle: treasure.uwbHorizontalAngle ?? (treasure.radarAngle + .pi / 2)
+                )
+                context.draw(
+                    Text("\(label) \(UWBRadarFusion.formattedMeters(meters))")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundColor(.white),
+                    at: CGPoint(x: point.x, y: point.y + 16)
+                )
+            }
 
             if isFound, treasure.proximity == .immediate {
                 let ring = CGRect(x: point.x - 18, y: point.y - 18, width: 36, height: 36)
@@ -208,6 +298,15 @@ struct DragonRadarView: View {
         if isFound { return "宝を見つけました" }
         if treasures.isEmpty { return "レーダー。宝はまだ見えていません" }
         if let closest = treasures.min(by: { $0.radarRadius < $1.radarRadius }) {
+            if closest.usesUWBDirection {
+                let meters = closest.accuracyMeters.map(UWBRadarFusion.formattedMeters) ?? ""
+                let direction = closest.uwbHorizontalAngle.map(UWBRadarFusion.relativeDirectionLabel(fromHorizontalAngle:)) ?? ""
+                return "レーダー。宝は\(direction) \(meters)。画面の上はスマホのうしろ向き"
+            }
+            if closest.usesUWBDistance {
+                let meters = closest.accuracyMeters.map(UWBRadarFusion.formattedMeters) ?? ""
+                return "レーダー。距離 \(meters)。方角はまだわかりません"
+            }
             return "レーダー。\(closest.proximity.kidLabel)"
         }
         return "レーダー"

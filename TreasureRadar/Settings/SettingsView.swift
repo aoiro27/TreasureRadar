@@ -48,11 +48,18 @@ struct SettingsView: View {
 
                 Section("おと") {
                     Toggle("レーダー音", isOn: $viewModel.settings.soundEnabled)
-                    Toggle("アナウンス", isOn: $viewModel.settings.voiceEnabled)
-                    Button("アナウンスをためす") {
-                        viewModel.previewVoice()
+                    Toggle("さがすアナウンス", isOn: $viewModel.settings.voiceEnabled)
+                    Toggle("やばい近づいてきた声", isOn: $viewModel.settings.huntedVoiceEnabled)
+                    HStack {
+                        Button("さがす声をためす") {
+                            viewModel.previewVoice()
+                        }
+                        Spacer()
+                        Button("かくす声をためす") {
+                            viewModel.previewHuntedVoice()
+                        }
                     }
-                    Text("さがす側はステータスが変わったときに「まだとおいよ」などを知らせます。かくす側は、探す人がすぐ近くまで来ると「やばい、ちかづいてきたー！」と声を出します。同じファイル名で差し替えできます。")
+                    Text("さがす側は「まだとおいよ」などを知らせます。かくす側の「やばい、ちかづいてきたー！」は上のスイッチで止められます。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
