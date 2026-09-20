@@ -115,7 +115,7 @@ extension BeaconRangingService: @preconcurrency CLLocationManagerDelegate {
         satisfying beaconConstraint: CLBeaconIdentityConstraint
     ) {
         let now = Date()
-        let label = role == .hunter ? "探す人" : "宝"
+        let label = role == .hunter ? "探す人" : "しきしろ"
         let treasures = beacons.map { beacon in
             DetectedTreasure.make(
                 id: "\(beacon.uuid.uuidString)-\(beacon.major)-\(beacon.minor)",
@@ -134,7 +134,7 @@ extension BeaconRangingService: @preconcurrency CLLocationManagerDelegate {
 
     private var searchingMessage: String {
         switch role {
-        case .treasure: "宝の電波をさがしています…"
+        case .treasure: "しきしろの電波をさがしています…"
         case .hunter: "かくしているよ。近づく人を見張っています"
         }
     }

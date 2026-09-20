@@ -71,14 +71,14 @@ struct TreasureMergeTests {
         let now = Date()
         let old = DetectedTreasure.make(
             id: "a",
-            title: "宝",
+            title: "しきしろ",
             rssi: -90,
             accuracyMeters: 12,
             now: now.addingTimeInterval(-1)
         )
         let incoming = DetectedTreasure.make(
             id: "a",
-            title: "宝",
+            title: "しきしろ",
             rssi: -40,
             accuracyMeters: 0.4,
             now: now
@@ -132,7 +132,7 @@ struct ScanSettingsTests {
 
     @Test func missingVoiceFlagDefaultsToOn() throws {
         let json = """
-        {"mode":"iBeacon","uuidString":"D4A60A10-7EA5-4E12-9ADA-545245415355","majorText":"1","minorText":"1","bleName":"Treasure","soundEnabled":true}
+        {"mode":"iBeacon","uuidString":"D4A60A10-7EA5-4E12-9ADA-545245415355","majorText":"1","minorText":"1","bleName":"しきしろ","soundEnabled":true}
         """.data(using: .utf8)!
         let settings = try JSONDecoder().decode(ScanSettings.self, from: json)
         #expect(settings.voiceEnabled)
@@ -252,11 +252,11 @@ struct FoundTrackerTests {
 }
 
 struct UWBRadarFusionTests {
-    @Test func farUWBStaysOnBLEHashAngle() {
+    @Test func liveUWBIsUsedEvenWhenFartherThanARoom() {
         let now = Date()
         let ble = DetectedTreasure.make(
             id: "a",
-            title: "宝",
+            title: "しきしろ",
             rssi: -80,
             accuracyMeters: 14,
             now: now
@@ -272,17 +272,17 @@ struct UWBRadarFusionTests {
             state: UWBFusionState(),
             now: now
         )
-        #expect(result.state.usingUWB == false)
-        #expect(result.treasures[0].radarAngle == ble.radarAngle)
-        #expect(result.treasures[0].accuracyMeters == 14)
-        #expect(result.treasures[0].usesUWBDirection == false)
+        #expect(result.state.usingUWB)
+        #expect(result.treasures[0].accuracyMeters == 12)
+        #expect(result.treasures[0].usesUWBDirection)
+        #expect(result.treasures[0].usesUWBDistance)
     }
 
     @Test func closeUWBSwitchesToDistanceAndHeading() {
         let now = Date()
         let ble = DetectedTreasure.make(
             id: "a",
-            title: "宝",
+            title: "しきしろ",
             rssi: -70,
             accuracyMeters: 6,
             now: now
@@ -306,38 +306,28 @@ struct UWBRadarFusionTests {
         #expect(result.treasures[0].proximity == .near)
     }
 
-    @Test func hysteresisKeepsUWBUntilExitDistance() {
+    @Test func hysteresisKeepsFreshUWBAtLongerRange() {
         let now = Date()
-        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -70, accuracyMeters: 9)
+        let ble = DetectedTreasure.make(id: "a", title: "しきしろ", rssi: -70, accuracyMeters: 9)
         let stay = UWBRadarFusion.apply(
             treasures: [ble],
-            fix: UWBFix(distanceMeters: 9, horizontalAngle: 0.2, timestamp: now),
+            fix: UWBFix(distanceMeters: 11, horizontalAngle: 0.2, timestamp: now),
             state: UWBFusionState(usingUWB: true),
             now: now
         )
         #expect(stay.state.usingUWB)
-        #expect(stay.treasures[0].accuracyMeters == 9)
-
-        let drop = UWBRadarFusion.apply(
-            treasures: [ble],
-            fix: UWBFix(distanceMeters: 11, horizontalAngle: 0.2, timestamp: now),
-            state: stay.state,
-            now: now
-        )
-        #expect(drop.state.usingUWB == false)
-        #expect(drop.treasures[0].accuracyMeters == 9)
-        #expect(drop.treasures[0].usesUWBDirection == false)
+        #expect(stay.treasures[0].accuracyMeters == 11)
     }
 
     @Test func staleFixFallsBackToBLE() {
         let now = Date()
-        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -50, accuracyMeters: 3)
+        let ble = DetectedTreasure.make(id: "a", title: "しきしろ", rssi: -50, accuracyMeters: 3)
         let result = UWBRadarFusion.apply(
             treasures: [ble],
             fix: UWBFix(
                 distanceMeters: 1.2,
                 horizontalAngle: 1,
-                timestamp: now.addingTimeInterval(-3)
+                timestamp: now.addingTimeInterval(-4)
             ),
             state: UWBFusionState(usingUWB: true),
             now: now
@@ -349,7 +339,7 @@ struct UWBRadarFusionTests {
 
     @Test func uwbDistanceWithoutHeadingKeepsFallbackAngle() {
         let now = Date()
-        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -55, accuracyMeters: 4)
+        let ble = DetectedTreasure.make(id: "a", title: "しきしろ", rssi: -55, accuracyMeters: 4)
         let result = UWBRadarFusion.apply(
             treasures: [ble],
             fix: UWBFix(distanceMeters: 1.5, horizontalAngle: nil, timestamp: now),
@@ -424,7 +414,7 @@ struct UWBRadarFusionTests {
 
     @Test func uwbHeadingIsSmoothedAfterFirstLock() {
         let now = Date()
-        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -50, accuracyMeters: 3)
+        let ble = DetectedTreasure.make(id: "a", title: "しきしろ", rssi: -50, accuracyMeters: 3)
         let first = UWBRadarFusion.apply(
             treasures: [ble],
             fix: UWBFix(distanceMeters: 1.2, horizontalAngle: 0, timestamp: now),

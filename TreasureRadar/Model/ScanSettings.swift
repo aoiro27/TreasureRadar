@@ -26,7 +26,7 @@ struct ScanSettings: Equatable, Codable, Sendable {
     }
 
     static let defaultUUIDString = "D4A60A10-7EA5-4E12-9ADA-545245415355"
-    /// 探す側が発信するビーコン。宝のUUIDと先頭ブロックだけ変えて衝突を防ぐ。
+    /// 探す側が発信するビーコン。しきしろ側のUUIDと先頭ブロックだけ変えて衝突を防ぐ。
     static let hunterUUIDString = "D4A60A11-7EA5-4E12-9ADA-545245415355"
     static let hunterUUID = UUID(uuidString: hunterUUIDString)!
     static let storageKey = "treasure.radar.settings"
@@ -45,7 +45,7 @@ struct ScanSettings: Equatable, Codable, Sendable {
         uuidString: defaultUUIDString,
         majorText: "1",
         minorText: "1",
-        bleName: "Treasure",
+        bleName: "しきしろ",
         soundEnabled: true,
         voiceEnabled: true,
         huntedVoiceEnabled: true

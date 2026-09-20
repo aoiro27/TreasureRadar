@@ -104,6 +104,9 @@ final class UWBPeerCoordinator: NSObject {
         if NISession.deviceCapabilities.supportsCameraAssistance {
             configuration.isCameraAssistanceEnabled = true
         }
+        if NISession.deviceCapabilities.supportsExtendedDistanceMeasurement {
+            configuration.isExtendedDistanceMeasurementEnabled = true
+        }
         niSession?.run(configuration)
     }
 

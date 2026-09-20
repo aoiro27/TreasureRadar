@@ -12,7 +12,7 @@
 | `voice_mid.wav` | 近づいてきた | ちかづいてきたよ |
 | `voice_near.wav` | あと少し | あとすこしだよ |
 | `voice_immediate.wav` | すぐそば | すぐそばだよ |
-| `voice_found.wav` | 宝を見つけたとき | 宝をみつけたよ |
+| `voice_found.wav` | しきしろを見つけたとき | しきしろをみつけたよ |
 | `voice_hunted.wav` | 隠しているスマホで、探す人がすぐ近くまで来たとき | やばい、ちかづいてきたー！ |
 
 差し替えたら Xcode でビルドし直してください。

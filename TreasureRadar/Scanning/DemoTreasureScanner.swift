@@ -39,13 +39,13 @@ final class DemoTreasureScanner: TreasureScanning {
 
         let approaching = DetectedTreasure.make(
             id: "demo-1",
-            title: "れんしゅうの宝",
+            title: "れんしゅうのしきしろ",
             rssi: rssi(for: distanceMeters),
             accuracyMeters: distanceMeters
         )
         let far = DetectedTreasure.make(
             id: "demo-2",
-            title: "とおい宝",
+            title: "とおいしきしろ",
             rssi: -92,
             accuracyMeters: 14
         )

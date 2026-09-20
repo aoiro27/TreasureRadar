@@ -4,7 +4,7 @@ import Foundation
 @MainActor
 final class BLEAdvertisementScanner: NSObject, TreasureScanning {
     private var central: CBCentralManager?
-    private var nameNeedle = "Treasure"
+    private var nameNeedle = "しきしろ"
     private var lastHits: [UUID: DetectedTreasure] = [:]
     private var pruneTimer: Timer?
     private weak var delegate: TreasureScanDelegate?
@@ -87,7 +87,7 @@ extension BLEAdvertisementScanner: @preconcurrency CBCentralManagerDelegate {
         let rssi = RSSI.intValue
         let treasure = DetectedTreasure.make(
             id: peripheral.identifier.uuidString,
-            title: name.isEmpty ? "宝" : name,
+            title: name.isEmpty ? "しきしろ" : name,
             rssi: rssi,
             accuracyMeters: nil
         )

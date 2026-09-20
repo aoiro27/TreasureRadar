@@ -82,7 +82,7 @@ final class RadarViewModel: TreasureScanDelegate, UWBPeerDelegate {
         foundTracker.reset()
         statusAnnouncer.reset()
         UIApplication.shared.isIdleTimerDisabled = true
-        statusMessage = "宝の電波をさがしています…"
+        statusMessage = "しきしろの電波をさがしています…"
 
         #if targetEnvironment(simulator)
         if settings.mode != .demo {

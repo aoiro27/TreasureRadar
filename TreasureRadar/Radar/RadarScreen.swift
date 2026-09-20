@@ -60,7 +60,7 @@ struct RadarScreen: View {
 
     private var header: some View {
         VStack(spacing: 4) {
-            Text("トレジャーレーダー")
+            Text("しきしろレーダー")
                 .font(.system(size: 28, weight: .black, design: .rounded))
                 .foregroundStyle(Color(red: 1, green: 0.86, blue: 0.32))
                 .shadow(color: .black.opacity(0.4), radius: 4, y: 2)
@@ -91,9 +91,9 @@ struct RadarScreen: View {
 
     private var modeCaption: String {
         switch viewModel.session {
-        case .hiding: "宝の電波を発信中"
+        case .hiding: "しきしろの電波を発信中"
         case .seeking: viewModel.settings.mode.title
-        case .idle: "宝さがしのレーダー"
+        case .idle: "しきしろさがしのレーダー"
         }
     }
 

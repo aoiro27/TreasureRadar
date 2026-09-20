@@ -295,13 +295,13 @@ struct DragonRadarView: View {
     }
 
     private var accessibilityText: String {
-        if isFound { return "宝を見つけました" }
-        if treasures.isEmpty { return "レーダー。宝はまだ見えていません" }
+        if isFound { return "しきしろを見つけました" }
+        if treasures.isEmpty { return "レーダー。しきしろはまだ見えていません" }
         if let closest = treasures.min(by: { $0.radarRadius < $1.radarRadius }) {
             if closest.usesUWBDirection {
                 let meters = closest.accuracyMeters.map(UWBRadarFusion.formattedMeters) ?? ""
                 let direction = closest.uwbHorizontalAngle.map(UWBRadarFusion.relativeDirectionLabel(fromHorizontalAngle:)) ?? ""
-                return "レーダー。宝は\(direction) \(meters)。画面の上はスマホのうしろ向き"
+                return "レーダー。しきしろは\(direction) \(meters)。画面の上はスマホのうしろ向き"
             }
             if closest.usesUWBDistance {
                 let meters = closest.accuracyMeters.map(UWBRadarFusion.formattedMeters) ?? ""

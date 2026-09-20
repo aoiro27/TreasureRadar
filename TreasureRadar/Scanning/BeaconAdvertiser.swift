@@ -51,7 +51,7 @@ final class BeaconAdvertiser: NSObject {
         let region = CLBeaconRegion(beaconIdentityConstraint: constraint, identifier: identifier)
         payload = region.peripheralData(withMeasuredPower: -59) as? [String: Any]
         peripheral = CBPeripheralManager(delegate: self, queue: .main)
-        report(role == .treasure ? "宝の電波を発信する準備中…" : "探す電波を発信する準備中…")
+        report(role == .treasure ? "しきしろの電波を発信する準備中…" : "探す電波を発信する準備中…")
     }
 
     func stop() {
@@ -74,7 +74,7 @@ extension BeaconAdvertiser: @preconcurrency CBPeripheralManagerDelegate {
                 peripheral.startAdvertising(payload)
                 switch role {
                 case .treasure:
-                    report("宝の電波を発信中。このスマホを隠してね")
+                    report("しきしろの電波を発信中。このスマホを隠してね")
                 case .hunter:
                     report("探す電波を発信中")
                 }

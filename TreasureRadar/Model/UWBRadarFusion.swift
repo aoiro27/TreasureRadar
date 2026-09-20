@@ -23,9 +23,7 @@ enum RangingLink: String, Equatable, Sendable {
 }
 
 enum UWBRadarFusion {
-    static let enterMeters = 8.0
-    static let exitMeters = 10.0
-    static let staleAfter: TimeInterval = 1.5
+    static let staleAfter: TimeInterval = 2.5
     static let syntheticTreasureID = "uwb-peer"
 
     static func radarAngle(fromHorizontalAngle horizontal: Double) -> Double {
@@ -68,14 +66,12 @@ enum UWBRadarFusion {
             let direction = relativeDirectionLabel(fromHorizontalAngle: horizontalAngle)
             return "\(direction) \(distance)　うえ＝スマホのうしろ"
         }
-        return "\(distance)　方角はまだ。スマホをたてて、うしろ側を宝のほうへ"
+        return "\(distance)　方角はまだ。スマホをたてて、うしろ側をしきしろのほうへ"
     }
 
-    static func shouldUseUWB(currentlyUsing: Bool, fix: UWBFix?, now: Date) -> Bool {
-        guard let fix, now.timeIntervalSince(fix.timestamp) < staleAfter else { return false }
-        if fix.distanceMeters <= enterMeters { return true }
-        if currentlyUsing, fix.distanceMeters <= exitMeters { return true }
-        return false
+    static func shouldUseUWB(currentlyUsing _: Bool, fix: UWBFix?, now: Date) -> Bool {
+        guard let fix else { return false }
+        return now.timeIntervalSince(fix.timestamp) < staleAfter
     }
 
     static func apply(
@@ -94,7 +90,7 @@ enum UWBRadarFusion {
             let overlaid = overlay(
                 DetectedTreasure.make(
                     id: syntheticTreasureID,
-                    title: "宝",
+                    title: "しきしろ",
                     rssi: -59,
                     accuracyMeters: fix.distanceMeters,
                     now: now

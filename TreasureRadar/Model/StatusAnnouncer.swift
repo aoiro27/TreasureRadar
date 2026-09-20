@@ -18,7 +18,7 @@ enum VoiceClip: String, CaseIterable, Sendable {
         case .mid: "ちかづいてきたよ"
         case .near: "あとすこしだよ"
         case .immediate: "すぐそばだよ"
-        case .found: "宝をみつけたよ"
+        case .found: "しきしろをみつけたよ"
         case .hunted: "やばい、ちかづいてきたー！"
         }
     }
