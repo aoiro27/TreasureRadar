@@ -60,6 +60,18 @@ enum UWBRadarFusion {
         return String(format: "%.0fm", meters)
     }
 
+    static func fix(distanceMeters: Double?, horizontalAngle: Double?, now: Date = Date()) -> UWBFix? {
+        if let distanceMeters {
+            return UWBFix(
+                distanceMeters: max(distanceMeters, 0),
+                horizontalAngle: horizontalAngle,
+                timestamp: now
+            )
+        }
+        guard horizontalAngle != nil else { return nil }
+        return UWBFix(distanceMeters: 0.15, horizontalAngle: horizontalAngle, timestamp: now)
+    }
+
     static func seekingHint(meters: Double, horizontalAngle: Double?) -> String {
         let distance = formattedMeters(meters)
         if let horizontalAngle {

@@ -1,5 +1,6 @@
 import Foundation
 import simd
+import AVFoundation
 @preconcurrency import MultipeerConnectivity
 @preconcurrency import NearbyInteraction
 
@@ -25,6 +26,8 @@ final class UWBPeerCoordinator: NSObject {
     private var advertiser: MCNearbyServiceAdvertiser?
     private var browser: MCNearbyServiceBrowser?
 
+    private var disableCameraAssistance = false
+
     init(delegate: UWBPeerDelegate) {
         self.delegate = delegate
         super.init()
@@ -34,6 +37,7 @@ final class UWBPeerCoordinator: NSObject {
         stop()
         self.role = role
         running = true
+        disableCameraAssistance = false
 
         guard NISession.isSupported else { return }
 
@@ -101,23 +105,27 @@ final class UWBPeerCoordinator: NSObject {
         if peerToken == token { return }
         peerToken = token
         let configuration = NINearbyPeerConfiguration(peerToken: token)
-        if NISession.deviceCapabilities.supportsCameraAssistance {
+        if NISession.deviceCapabilities.supportsCameraAssistance,
+           !disableCameraAssistance,
+           Self.cameraAssistanceAllowed {
             configuration.isCameraAssistanceEnabled = true
-        }
-        if NISession.deviceCapabilities.supportsExtendedDistanceMeasurement {
-            configuration.isExtendedDistanceMeasurementEnabled = true
         }
         niSession?.run(configuration)
     }
 
+    private static var cameraAssistanceAllowed: Bool {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized: true
+        default: false
+        }
+    }
+
     nonisolated private static func fix(from object: NINearbyObject) -> UWBFix? {
-        guard let distance = object.distance else { return nil }
         let heading = object.horizontalAngle.map(Double.init)
             ?? object.direction.flatMap(UWBRadarFusion.horizontalAngle(fromDirection:))
-        return UWBFix(
-            distanceMeters: Double(distance),
-            horizontalAngle: heading,
-            timestamp: Date()
+        return UWBRadarFusion.fix(
+            distanceMeters: object.distance.map(Double.init),
+            horizontalAngle: heading
         )
     }
 
@@ -143,8 +151,9 @@ final class UWBPeerCoordinator: NSObject {
 extension UWBPeerCoordinator: NISessionDelegate {
     nonisolated func session(_ session: NISession, didUpdate nearbyObjects: [NINearbyObject]) {
         let fixes = nearbyObjects.compactMap(Self.fix(from:))
+        guard let fix = fixes.first else { return }
         Task { @MainActor in
-            self.delegate?.uwbDidUpdate(fixes.first)
+            self.delegate?.uwbDidUpdate(fix)
         }
     }
 
@@ -172,6 +181,7 @@ extension UWBPeerCoordinator: NISessionDelegate {
     nonisolated func session(_ session: NISession, didInvalidateWith error: any Error) {
         Task { @MainActor in
             self.delegate?.uwbDidUpdate(nil)
+            self.disableCameraAssistance = true
             try? await Task.sleep(for: .seconds(1))
             self.restartNearbySessionIfNeeded()
         }
@@ -241,7 +251,7 @@ extension UWBPeerCoordinator: MCNearbyServiceAdvertiserDelegate {
         let theirRole = context.flatMap { String(data: $0, encoding: .utf8) }
         let handler = UncheckedInvitationHandler(invitationHandler)
         Task { @MainActor in
-            let accept = self.running && theirRole == self.oppositeRole
+            let accept = self.running && (theirRole == nil || theirRole == self.oppositeRole)
             handler.call(accept, self.mcSession)
         }
     }

@@ -278,6 +278,28 @@ struct UWBRadarFusionTests {
         #expect(result.treasures[0].usesUWBDistance)
     }
 
+    @Test func zeroDistanceUWBStillSwitchesFromBLE() {
+        let now = Date()
+        let ble = DetectedTreasure.make(id: "a", title: "宝", rssi: -30, accuracyMeters: 0.2)
+        let result = UWBRadarFusion.apply(
+            treasures: [ble],
+            fix: UWBRadarFusion.fix(distanceMeters: 0, horizontalAngle: 0, now: now),
+            state: UWBFusionState(),
+            now: now
+        )
+        #expect(result.state.usingUWB)
+        #expect(result.treasures[0].accuracyMeters == 0)
+        #expect(result.treasures[0].usesUWBDistance)
+        #expect(result.treasures[0].usesUWBDirection)
+    }
+
+    @Test func headingWithoutDistanceStillCountsAsUWB() {
+        let fix = UWBRadarFusion.fix(distanceMeters: nil, horizontalAngle: 0.3)
+        #expect(fix != nil)
+        #expect(fix?.horizontalAngle == 0.3)
+        #expect(UWBRadarFusion.fix(distanceMeters: nil, horizontalAngle: nil) == nil)
+    }
+
     @Test func closeUWBSwitchesToDistanceAndHeading() {
         let now = Date()
         let ble = DetectedTreasure.make(
